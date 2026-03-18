@@ -1,65 +1,64 @@
-import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentSession } from "@/lib/auth";
 
-export default function Home() {
+export default async function HomePage() {
+  const session = await getCurrentSession();
+
+  if (session) {
+    redirect("/dashboard");
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="page-shell">
+      <section className="hero-card glass-card rounded-[36px] px-6 py-8 md:px-10 md:py-12">
+        <div className="grid items-center gap-10 md:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-6">
+            <p className="eyebrow">ENSF 400 Assignment 4</p>
+            <h1 className="max-w-3xl text-5xl font-bold tracking-tight md:text-6xl">
+              Personalized movie and TV recommendations with a full-stack Next.js build.
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-[var(--muted)]">
+              CineMatch turns your onboarding preferences, ratings, reviews, and manual adjustments into explainable recommendations. The stack is ready for Render PostgreSQL, email verification, admin moderation, and OpenAI-powered recommendation generation.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link className="btn-primary" href="/register">
+                Create account
+              </Link>
+              <Link className="btn-ghost" href="/login">
+                Log in
+              </Link>
+              <Link className="btn-ghost" href="/guest">
+                Try guest mode
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <span className="pill">Registration + Login</span>
+              <span className="pill">Onboarding Questionnaire</span>
+              <span className="pill">LLM Recommendations</span>
+              <span className="pill">Guest Mode + Prompting</span>
+              <span className="pill">Ratings, Reviews, Reports</span>
+            </div>
+          </div>
+          <div className="grid gap-4">
+            <div className="glass-card rounded-[28px] p-5">
+              <p className="eyebrow">Core Flow</p>
+              <ol className="mt-4 space-y-3 text-sm text-[var(--muted)]">
+                <li>1. Register and optionally verify via email.</li>
+                <li>2. Complete the multi-select onboarding questionnaire.</li>
+                <li>3. Receive 5 explainable recommendations on the dashboard.</li>
+                <li>4. Adjust by prompt, guest mode, rating, review, comment, and report.</li>
+              </ol>
+            </div>
+            <div className="glass-card rounded-[28px] p-5">
+              <p className="eyebrow">Admin Demo</p>
+              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                Seeded admin login: <strong>admin@cinematch.local</strong> with password <strong>Admin1234</strong> after you run the seed script.
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }
