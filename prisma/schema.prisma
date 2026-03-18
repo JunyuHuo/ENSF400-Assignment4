@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id                 String                @id @default(cuid())
+  email              String                @unique
+  name               String
+  passwordHash       String
+  role               Role                  @default(USER)
+  emailVerified      Boolean               @default(false)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  profile            UserProfile?
+  sessions           Session[]
+  verificationTokens VerificationToken[]
+  ratings            Rating[]
+  reviews            Review[]
+  comments           Comment[]
+  reports            Report[]              @relation("ReportedBy")
+  recommendationBatches RecommendationBatch[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  type      String
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserProfile {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  favoriteGenres        String[]
+  favoriteMoods         String[]
+  viewingHabits         String[]
+  pacingPreference      String?
+  favoriteEras          String[]
+  includeGenres         String[]
+  excludeGenres         String[]
+  includeTitles         String[]
+  excludeTitles         String[]
+  recommendationSummary String?  @db.Text
+  onboardingCompleted   Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Content {
+  id                 String               @id @default(cuid())
+  slug               String               @unique
+  title              String
+  type               String
+  year               Int
+  maturityRating     String
+  genres             String[]
+  moods              String[]
+  pacing             String
+  runtime            String
+  summary            String               @db.Text
+  explanationHint    String               @db.Text
+  averageRating      Float                @default(0)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  ratings            Rating[]
+  reviews            Review[]
+  comments           Comment[]
+  reports            Report[]
+  recommendationItems RecommendationItem[]
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String
+  score     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  reports   Report[]
+
+  @@unique([userId, contentId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  contentId String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  reports   Report[]
+}
+
+model Report {
+  id         String    @id @default(cuid())
+  userId     String
+  contentId  String
+  reviewId   String?
+  commentId  String?
+  reason     String
+  details    String?   @db.Text
+  status     String    @default("OPEN")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  reportedBy User      @relation("ReportedBy", fields: [userId], references: [id], onDelete: Cascade)
+  content    Content   @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  review     Review?   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  comment    Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+}
+
+model RecommendationBatch {
+  id                String               @id @default(cuid())
+  userId            String
+  promptSnapshot    Json?
+  explanationSource String
+  createdAt         DateTime             @default(now())
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items             RecommendationItem[]
+}
+
+model RecommendationItem {
+  id        String              @id @default(cuid())
+  batchId   String
+  contentId String
+  rank      Int
+  explanation String            @db.Text
+  batch     RecommendationBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  content   Content             @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, rank])
+}
