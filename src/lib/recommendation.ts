@@ -105,7 +105,8 @@ async function buildInteractionSignals(userId: string): Promise<InteractionSigna
   const likedMoods = new Map<string, number>();
   const dislikedMoods = new Map<string, number>();
 
-  ratings.forEach((rating) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ratings.forEach((rating: any) => {
     watchedContentIds.add(rating.contentId);
     const delta = rating.score - 3;
 
@@ -120,7 +121,8 @@ async function buildInteractionSignals(userId: string): Promise<InteractionSigna
     }
   });
 
-  reviews.forEach((review) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  reviews.forEach((review: any) => {
     watchedContentIds.add(review.contentId);
     const sentiment = getSentimentScore(review.body);
 
@@ -133,7 +135,8 @@ async function buildInteractionSignals(userId: string): Promise<InteractionSigna
     }
   });
 
-  comments.forEach((comment) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  comments.forEach((comment: any) => {
     watchedContentIds.add(comment.contentId);
     const sentiment = getSentimentScore(comment.body);
 
@@ -181,13 +184,13 @@ function getPromptBoost({
   const normalizedPrompt = prompt.toLowerCase();
   let boost = 0;
 
-  item.genres.forEach((genre) => {
+  item.genres.forEach((genre: string) => {
     if (normalizedPrompt.includes(genre.toLowerCase())) {
       boost += 2;
     }
   });
 
-  item.moods.forEach((mood) => {
+  item.moods.forEach((mood: string) => {
     if (normalizedPrompt.includes(mood.toLowerCase())) {
       boost += 1.5;
     }
@@ -227,26 +230,27 @@ function buildFallbackRecommendations(params: {
 
   const boostedGenres = [...profile.favoriteGenres, ...includeGenres];
   const blockedGenres = [...profile.excludeGenres, ...excludeGenres];
-  const boostedTitles = [...profile.includeTitles, ...includeTitles].map((item) =>
+  const boostedTitles = [...profile.includeTitles, ...includeTitles].map((item: string) =>
     item.toLowerCase(),
   );
-  const blockedTitles = [...profile.excludeTitles, ...excludeTitles].map((item) =>
+  const blockedTitles = [...profile.excludeTitles, ...excludeTitles].map((item: string) =>
     item.toLowerCase(),
   );
 
   const ranked: RecommendationCandidate[] = content
-    .map((item) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((item: any) => {
       let score = 0;
-      const interactionGenreBoost = item.genres.reduce((total, genre) => {
+      const interactionGenreBoost = item.genres.reduce((total: number, genre: string) => {
         return total + (interactionSignals.likedGenres.get(genre) ?? 0);
       }, 0);
-      const interactionGenrePenalty = item.genres.reduce((total, genre) => {
+      const interactionGenrePenalty = item.genres.reduce((total: number, genre: string) => {
         return total + (interactionSignals.dislikedGenres.get(genre) ?? 0);
       }, 0);
-      const interactionMoodBoost = item.moods.reduce((total, mood) => {
+      const interactionMoodBoost = item.moods.reduce((total: number, mood: string) => {
         return total + (interactionSignals.likedMoods.get(mood) ?? 0);
       }, 0);
-      const interactionMoodPenalty = item.moods.reduce((total, mood) => {
+      const interactionMoodPenalty = item.moods.reduce((total: number, mood: string) => {
         return total + (interactionSignals.dislikedMoods.get(mood) ?? 0);
       }, 0);
 
@@ -293,7 +297,7 @@ function buildFallbackRecommendations(params: {
 
       const explanationParts = [
         matchesAny(item.genres, profile.favoriteGenres)
-          ? `It lines up with your ${item.genres.filter((genre) => profile.favoriteGenres.includes(genre)).join(", ")} interests.`
+          ? `It lines up with your ${item.genres.filter((genre: string) => profile.favoriteGenres.includes(genre)).join(", ")} interests.`
           : "It broadens your library without drifting far from your baseline taste.",
         interactionGenreBoost > interactionGenrePenalty
           ? `Your ratings and write-ups suggest you respond well to similar ${item.genres.join(", ").toLowerCase()} material.`
@@ -301,7 +305,7 @@ function buildFallbackRecommendations(params: {
             ? `It survives despite some weaker overlap with genres you usually score lower.`
             : `It remains compatible with the interaction patterns you've built so far.`,
         matchesAny(item.moods, profile.favoriteMoods)
-          ? `The ${item.moods.filter((mood) => profile.favoriteMoods.includes(mood)).join(", ").toLowerCase()} tone matches the moods you selected.`
+          ? `The ${item.moods.filter((mood: string) => profile.favoriteMoods.includes(mood)).join(", ").toLowerCase()} tone matches the moods you selected.`
           : `Its ${item.pacing.toLowerCase()} pacing keeps it close to the viewing rhythm you prefer.`,
         naturalLanguagePrompt
           ? `It also reflects your latest request: "${naturalLanguagePrompt}".`
@@ -316,7 +320,8 @@ function buildFallbackRecommendations(params: {
         explanation: explanationParts.join(" "),
       };
     })
-    .sort((left, right) => right.score - left.score)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .sort((left: any, right: any) => right.score - left.score)
     .slice(0, 5);
 
   return ranked;
@@ -332,12 +337,17 @@ async function buildAiRecommendations(params: {
   excludeTitles: string[];
   naturalLanguagePrompt: string;
 }) {
-  if (!process.env.OPENAI_API_KEY) {
+  const apiKey = process.env.OVH_AI_API_KEY || process.env.OPENAI_API_KEY;
+  const baseURL = process.env.OVH_AI_BASE_URL || "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1";
+  const model = process.env.OVH_AI_MODEL || process.env.OPENAI_MODEL || "gpt-oss-120b";
+
+  if (!apiKey) {
     return null;
   }
 
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey,
+    baseURL,
   });
 
   const contentPool = params.content.map((item) => ({
@@ -352,8 +362,9 @@ async function buildAiRecommendations(params: {
   }));
 
   const completion = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
+    model,
     temperature: 0.8,
+    max_tokens: 1000,
     messages: [
       {
         role: "system",
@@ -383,30 +394,44 @@ async function buildAiRecommendations(params: {
     ],
   });
 
-  const raw = completion.choices[0]?.message?.content;
+  const message = completion.choices[0]?.message;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let raw = message?.content || (message as any).reasoning_content;
 
   if (!raw) {
     return null;
   }
 
-  const parsed = JSON.parse(raw) as {
-    recommendations?: Array<{ contentId: string; explanation: string }>;
-  };
+  try {
+    // Robust JSON extraction
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      raw = jsonMatch[0];
+    }
 
-  if (!parsed.recommendations?.length) {
+    const parsed = JSON.parse(raw) as {
+      recommendations?: Array<{ contentId: string; explanation: string }>;
+    };
+
+    if (!parsed.recommendations?.length) {
+      return null;
+    }
+
+    return parsed.recommendations
+      .slice(0, 5)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((recommendation: any, index: number) => ({
+        contentId: recommendation.contentId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        title: contentPool.find((item: any) => item.id === recommendation.contentId)?.title ?? `Pick ${index + 1}`,
+        score: 100 - index,
+        explanation: recommendation.explanation,
+      }));
+  } catch (error) {
+    console.error("AI recommendation parsing error:", error);
     return null;
   }
-
-  return parsed.recommendations
-    .slice(0, 5)
-    .map((recommendation, index) => ({
-      contentId: recommendation.contentId,
-      title: contentPool.find((item) => item.id === recommendation.contentId)?.title ?? `Pick ${index + 1}`,
-      score: 100 - index,
-      explanation: recommendation.explanation,
-    }));
 }
-
 export async function generateRecommendationBatch({
   userId,
   includeGenres = [],
