@@ -1,11 +1,7 @@
-"use server";
-
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { clearSession, createSession, hashPassword, requireAdmin, requireUser, verifyPassword } from "@/lib/auth";
-import { sendVerificationEmail } from "@/lib/mail";
 import { generateRecommendationBatch } from "@/lib/recommendation";
 import {
   commentSchema,
@@ -48,8 +44,6 @@ export async function registerAction(formData: FormData) {
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
-  const verificationToken = randomUUID();
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
 
   const user = await prisma.user.create({
     data: {
@@ -68,24 +62,11 @@ export async function registerAction(formData: FormData) {
           excludeTitles: [],
         },
       },
-      verificationTokens: {
-        create: {
-          token: verificationToken,
-          type: "email_verification",
-          expiresAt,
-        },
-      },
     },
   });
 
-  await sendVerificationEmail({
-    email: user.email,
-    name: user.name,
-    token: verificationToken,
-  });
-
   await createSession(user.id);
-  redirect("/onboarding?success=Account created. Check your email for the verification link.");
+  redirect("/onboarding?success=Account created. Welcome to CineMatch!");
 }
 
 export async function loginAction(formData: FormData) {
@@ -119,29 +100,6 @@ export async function loginAction(formData: FormData) {
 export async function logoutAction() {
   await clearSession();
   redirect("/login?success=You have been logged out.");
-}
-
-export async function verifyEmailAction(token: string) {
-  const verificationToken = await prisma.verificationToken.findUnique({
-    where: { token },
-  });
-
-  if (!verificationToken || verificationToken.usedAt || verificationToken.expiresAt < new Date()) {
-    redirect("/login?error=That verification link is invalid or expired.");
-  }
-
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: verificationToken.userId },
-      data: { emailVerified: true },
-    }),
-    prisma.verificationToken.update({
-      where: { id: verificationToken.id },
-      data: { usedAt: new Date() },
-    }),
-  ]);
-
-  redirect("/dashboard?success=Email verified successfully.");
 }
 
 export async function saveOnboardingAction(formData: FormData) {

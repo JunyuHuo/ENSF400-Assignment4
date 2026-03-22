@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Role } from "@prisma/client";
 import { logoutAction } from "@/server/actions";
 
@@ -15,6 +18,16 @@ export function AppShell({
   user: ShellUser;
   children: React.ReactNode;
 }) {
+  const [confirming, setConfirming] = useState(false);
+
+  function handleLogout(e: React.FormEvent<HTMLFormElement>) {
+    if (!confirming) {
+      e.preventDefault();
+      setConfirming(true);
+      return;
+    }
+  }
+
   return (
     <div className="page-shell">
       <header className="glass-card mb-6 rounded-[28px] px-5 py-4">
@@ -42,9 +55,12 @@ export function AppShell({
                 Admin
               </Link>
             ) : null}
-            <form action={logoutAction}>
-              <button className="btn-primary" type="submit">
-                Log out
+            <form action={logoutAction} onSubmit={handleLogout}>
+              <button
+                className={confirming ? "btn-danger" : "btn-ghost"}
+                type="submit"
+              >
+                {confirming ? "Confirm logout" : "Log out"}
               </button>
             </form>
           </nav>

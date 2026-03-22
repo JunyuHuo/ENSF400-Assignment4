@@ -198,7 +198,6 @@ async function main() {
     where: { email: "admin@cinematch.local" },
     update: {
       role: Role.ADMIN,
-      emailVerified: true,
       passwordHash: adminPasswordHash,
       name: "CineMatch Admin",
     },
@@ -207,7 +206,6 @@ async function main() {
       name: "CineMatch Admin",
       passwordHash: adminPasswordHash,
       role: Role.ADMIN,
-      emailVerified: true,
       profile: {
         create: {
           favoriteGenres: ["Drama", "Sci-Fi"],

@@ -147,6 +147,12 @@ button {
   box-shadow: 0 14px 30px rgba(34, 75, 69, 0.2);
 }
 
+.btn-danger {
+  background: #b91c1c;
+  color: white;
+  box-shadow: 0 14px 30px rgba(185, 28, 28, 0.2);
+}
+
 .btn-ghost {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.6);

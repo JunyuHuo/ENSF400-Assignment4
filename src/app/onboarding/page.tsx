@@ -31,9 +31,6 @@ export default async function OnboardingPage({
         <div className="mt-6 space-y-3">
           <StatusBanner message={params.success} />
           <StatusBanner kind="error" message={params.error} />
-          {!session.user.emailVerified ? (
-            <StatusBanner kind="error" message="Email is not verified yet. You can still explore the app, but verification is recommended." />
-          ) : null}
         </div>
         <form action={saveOnboardingAction} className="mt-8 space-y-8">
           <div className="space-y-3">
