@@ -332,12 +332,16 @@ async function buildAiRecommendations(params: {
   excludeTitles: string[];
   naturalLanguagePrompt: string;
 }) {
-  if (!process.env.OPENAI_API_KEY) {
+  const apiKey = process.env.OVH_AI_API_KEY ?? process.env.OPENAI_API_KEY;
+  const baseURL = process.env.OVH_AI_BASE_URL;
+
+  if (!apiKey) {
     return null;
   }
 
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey,
+    ...(baseURL ? { baseURL } : {}),
   });
 
   const contentPool = params.content.map((item) => ({
@@ -352,7 +356,7 @@ async function buildAiRecommendations(params: {
   }));
 
   const completion = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
+    model: process.env.OVH_AI_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
     temperature: 0.8,
     messages: [
       {

@@ -16,7 +16,7 @@ This repository implements the code portion of the system described across:
 - `PostgreSQL` via `DATABASE_URL` from Render
 - `bcryptjs` for password hashing
 - `Resend` or `Nodemailer` for email verification
-- `OpenAI API` with fallback recommendation logic when no API key is configured
+- `OpenAI API` or `OVH AI (GPT-OSS-120b)` with fallback recommendation logic when no API key is configured
 
 ## What Has Been Implemented
 
@@ -69,7 +69,7 @@ Implemented:
 
 Partially implemented or simplified:
 - `FR-004.4`: ratings, reviews, and comments now influence recommendation scoring, but the weighting is heuristic rather than a trained personalization model.
-- LLM integration is implemented with an OpenAI path and a fallback local scoring path. If `OPENAI_API_KEY` is not set, the fallback path is used.
+- LLM integration is implemented with an OVH AI / OpenAI path and a fallback local scoring path. If `OVH_AI_API_KEY` or `OPENAI_API_KEY` is not set, the fallback path is used.
 - Verification email is implemented, but if neither `RESEND_API_KEY` nor SMTP credentials are configured it logs the verification link instead of sending a real email.
 
 Not implemented from Assignment 1 scope:
@@ -171,9 +171,12 @@ DATABASE_URL="postgresql://username:password@host:5432/database?schema=public"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
-4. Optional env vars:
+4. Optional env vars (OVH AI or OpenAI for AI recommendations):
 
 ```env
+OVH_AI_API_KEY=""
+OVH_AI_MODEL="gpt-oss-120b"
+OVH_AI_BASE_URL="https://oai.endpoints.kepler.ai.cloud.ovh.net/v1"
 OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-4.1-mini"
 SMTP_HOST=""
