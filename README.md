@@ -137,11 +137,10 @@ Those are team process and submission tasks, not app-code tasks.
 
 ### Required before demoing with real services
 
-- Put the real Render PostgreSQL URL into `.env` as `DATABASE_URL`
-- Run migrations against the real database
-- Run the seed script
-- Optionally add `OPENAI_API_KEY`
-- Optionally add SMTP credentials for real verification emails
+- Database migrations must be run against the production PostgreSQL (Render) before first deploy
+- Seed script must be run against the production database
+- `NEXT_PUBLIC_APP_URL` must be updated to the actual Vercel domain after first deploy
+- Optionally add SMTP credentials for real verification emails (Resend is already configured)
 
 ### Strongly recommended next improvements
 
@@ -149,6 +148,68 @@ Those are team process and submission tasks, not app-code tasks.
 - Add better content catalog coverage or integrate a media metadata API
 - Add stronger NLP or embedding-based interpretation for freeform recommendation prompts
 - Add more advanced moderation analytics and trends over time
+
+## Vercel Deployment
+
+### 1. Push to GitHub
+
+Make sure your project is on GitHub before connecting to Vercel.
+
+### 2. Import to Vercel
+
+1. Go to [vercel.com](https://vercel.com) and sign in
+2. Click **"Add New" → "Project"**
+3. Import your GitHub repository
+4. **Framework Preset**: Next.js (auto-detected)
+5. **Root Directory**: `./app` (since the project lives inside the `app` folder)
+6. **Build Command**: `npm run build` (default)
+7. **Output Directory**: `.next` (default)
+
+### 3. Add Environment Variables
+
+In the Vercel project **Settings → Environment Variables**, add all variables from `.env`:
+
+| Name | Value | Environments |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://ensf_400_user:...` | Production, Preview, Development |
+| `NEXT_PUBLIC_APP_URL` | `https://your-project.vercel.app` | Production, Preview, Development |
+| `RESEND_API_KEY` | `re_NkKRho5H_...` | Production, Preview, Development |
+| `RESEND_FROM` | `onboarding@resend.dev` | Production, Preview, Development |
+| `OVH_AI_API_KEY` | `eyJhbGciOiJFZERTQS...` | Production, Preview, Development |
+| `OVH_AI_MODEL` | `gpt-oss-120b` | Production, Preview, Development |
+| `OVH_AI_BASE_URL` | `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1` | Production, Preview, Development |
+
+> ⚠️ **Important**: After the first deploy, `NEXT_PUBLIC_APP_URL` should be your actual Vercel domain (e.g., `https://cinematch.vercel.app`). Update it before testing email verification links.
+
+### 4. Database Migration
+
+Since Vercel serverless functions cannot run long-running scripts, **run migrations locally first**:
+
+```bash
+# 1. Point .env to your production DATABASE_URL
+# 2. Run migrations against the production database
+npm run prisma:migrate
+
+# 3. Seed the production database
+npm run db:seed
+```
+
+Alternatively, run migrations directly against the Render PostgreSQL instance using the Render dashboard or `psql`.
+
+### 5. Deploy
+
+Click **"Deploy"**. Vercel will automatically run `postinstall` (Prisma generate) and `build`.
+
+### 6. Post-Deployment Checklist
+
+- [ ] Update `NEXT_PUBLIC_APP_URL` in Vercel env vars to your actual Vercel domain
+- [ ] Test registration and email verification flow
+- [ ] Test login/logout
+- [ ] Test onboarding questionnaire
+- [ ] Test recommendation generation
+- [ ] Check Vercel function logs if anything fails
+
+---
 
 ## Local Setup
 
