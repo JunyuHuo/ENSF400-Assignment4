@@ -488,7 +488,7 @@ export async function generateRecommendationBatch({
   }
 
   let recommendations: RecommendationCandidate[] | null = null;
-  let explanationSource = "fallback";
+  let explanationSource = "openai";
 
   try {
     recommendations = await buildAiRecommendations({
@@ -501,25 +501,14 @@ export async function generateRecommendationBatch({
       excludeTitles,
       naturalLanguagePrompt,
     });
-
-    if (recommendations?.length) {
-      explanationSource = "openai";
-    }
   } catch {
     recommendations = null;
   }
 
   if (!recommendations?.length) {
-    recommendations = buildFallbackRecommendations({
-      content,
-      profile,
-      interactionSignals,
-      includeGenres,
-      excludeGenres,
-      includeTitles,
-      excludeTitles,
-      naturalLanguagePrompt,
-    });
+    throw new Error(
+      "AI recommendation failed. Please check your OVH_AI_API_KEY / OPENAI_API_KEY environment variable."
+    );
   }
 
   const batch = await prisma.recommendationBatch.create({
@@ -616,7 +605,7 @@ export async function generateGuestRecommendations({
     highlights: ["Guest mode does not persist ratings, reviews, or comments."],
   };
 
-  return buildFallbackRecommendations({
+  const recommendations = await buildAiRecommendations({
     content,
     profile: guestProfile,
     interactionSignals,
@@ -626,4 +615,12 @@ export async function generateGuestRecommendations({
     excludeTitles: [],
     naturalLanguagePrompt,
   });
+
+  if (!recommendations?.length) {
+    throw new Error(
+      "AI recommendation failed. Please check your OVH_AI_API_KEY / OPENAI_API_KEY environment variable."
+    );
+  }
+
+  return recommendations;
 }
