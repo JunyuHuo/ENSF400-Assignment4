@@ -355,60 +355,79 @@ async function buildAiRecommendations(params: {
     summary: item.summary,
   }));
 
-  const completion = await openai.chat.completions.create({
-    model: process.env.OVH_AI_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
-    temperature: 0.8,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are a recommendation engine for a movie and TV platform. Return valid JSON only.",
-      },
-      {
-        role: "user",
-        content: JSON.stringify({
-          profile: params.profile,
-          oneTimeAdjustments: {
-            includeGenres: params.includeGenres,
-            excludeGenres: params.excludeGenres,
-            includeTitles: params.includeTitles,
-            excludeTitles: params.excludeTitles,
-          },
-          interactionSignals: {
-            summary: params.interactionSignals.summary,
-            highlights: params.interactionSignals.highlights,
-          },
-          naturalLanguagePrompt: params.naturalLanguagePrompt,
-          contentPool,
-          instructions:
-            "Choose exactly 5 items from the content pool. Return JSON in the shape { recommendations: [{ contentId, explanation }] }. Each explanation must be 2 concise sentences.",
-        }),
-      },
-    ],
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
 
-  const raw = completion.choices[0]?.message?.content;
+  try {
+    const completion = await openai.chat.completions.create(
+      {
+        model: process.env.OVH_AI_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
+        temperature: 0.8,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a recommendation engine for a movie and TV platform. Return valid JSON only.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({
+              profile: params.profile,
+              oneTimeAdjustments: {
+                includeGenres: params.includeGenres,
+                excludeGenres: params.excludeGenres,
+                includeTitles: params.includeTitles,
+                excludeTitles: params.excludeTitles,
+              },
+              interactionSignals: {
+                summary: params.interactionSignals.summary,
+                highlights: params.interactionSignals.highlights,
+              },
+              naturalLanguagePrompt: params.naturalLanguagePrompt,
+              contentPool,
+              instructions:
+                "Choose exactly 5 items from the content pool. Return JSON in the shape { recommendations: [{ contentId, explanation }] }. Each explanation must be 2 concise sentences.",
+            }),
+          },
+        ],
+      },
+      { signal: controller.signal },
+    );
+    clearTimeout(timeout);
 
-  if (!raw) {
+    const raw = completion.choices[0]?.message?.content;
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as {
+      recommendations?: Array<{ contentId: string; explanation: string }>;
+    };
+
+    if (!parsed.recommendations?.length) {
+      return null;
+    }
+
+    return parsed.recommendations
+      .slice(0, 5)
+      .map((recommendation, index) => ({
+        contentId: recommendation.contentId,
+        title:
+          contentPool.find((item) => item.id === recommendation.contentId)?.title ??
+          `Pick ${index + 1}`,
+        score: 100 - index,
+        explanation: recommendation.explanation,
+      }));
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === "AbortError") {
+      console.warn("[Recommendation] AI request timed out after 12s, falling back to rule-based engine.");
+    } else {
+      console.error("[Recommendation] AI request failed:", err);
+    }
     return null;
   }
-
-  const parsed = JSON.parse(raw) as {
-    recommendations?: Array<{ contentId: string; explanation: string }>;
-  };
-
-  if (!parsed.recommendations?.length) {
-    return null;
-  }
-
-  return parsed.recommendations
-    .slice(0, 5)
-    .map((recommendation, index) => ({
-      contentId: recommendation.contentId,
-      title: contentPool.find((item) => item.id === recommendation.contentId)?.title ?? `Pick ${index + 1}`,
-      score: 100 - index,
-      explanation: recommendation.explanation,
-    }));
 }
 
 export async function generateRecommendationBatch({
@@ -455,29 +474,27 @@ export async function generateRecommendationBatch({
     });
   }
 
-  let recommendations: RecommendationCandidate[] | null = null;
-  let explanationSource = "fallback";
+  let recommendations: RecommendationCandidate[] = [];
+  let explanationSource = "openai";
 
-  try {
-    recommendations = await buildAiRecommendations({
-      content,
-      profile,
-      interactionSignals,
-      includeGenres,
-      excludeGenres,
-      includeTitles,
-      excludeTitles,
-      naturalLanguagePrompt,
-    });
+  const aiResult = await buildAiRecommendations({
+    content,
+    profile,
+    interactionSignals,
+    includeGenres,
+    excludeGenres,
+    includeTitles,
+    excludeTitles,
+    naturalLanguagePrompt,
+  });
 
-    if (recommendations?.length) {
-      explanationSource = "openai";
-    }
-  } catch {
-    recommendations = null;
-  }
-
-  if (!recommendations?.length) {
+  if (aiResult?.length) {
+    recommendations = aiResult;
+  } else {
+    explanationSource = "fallback";
+    console.warn(
+      "[Recommendation] AI model unavailable or returned no results — using rule-based fallback.",
+    );
     recommendations = buildFallbackRecommendations({
       content,
       profile,
@@ -584,6 +601,24 @@ export async function generateGuestRecommendations({
     highlights: ["Guest mode does not persist ratings, reviews, or comments."],
   };
 
+  const aiResult = await buildAiRecommendations({
+    content,
+    profile: guestProfile,
+    interactionSignals,
+    includeGenres: [],
+    excludeGenres: [],
+    includeTitles: [],
+    excludeTitles: [],
+    naturalLanguagePrompt,
+  });
+
+  if (aiResult?.length) {
+    return aiResult;
+  }
+
+  console.warn(
+    "[Guest Recommendation] AI model unavailable — using rule-based fallback.",
+  );
   return buildFallbackRecommendations({
     content,
     profile: guestProfile,
