@@ -361,38 +361,49 @@ async function buildAiRecommendations(params: {
     summary: item.summary,
   }));
 
-  const completion = await openai.chat.completions.create({
-    model,
-    temperature: 0.8,
-    max_tokens: 1000,
-    messages: [
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+
+  let completion;
+  try {
+    completion = await openai.chat.completions.create(
       {
-        role: "system",
-        content:
-          "You are a recommendation engine for a movie and TV platform. Return valid JSON only.",
-      },
-      {
-        role: "user",
-        content: JSON.stringify({
-          profile: params.profile,
-          oneTimeAdjustments: {
-            includeGenres: params.includeGenres,
-            excludeGenres: params.excludeGenres,
-            includeTitles: params.includeTitles,
-            excludeTitles: params.excludeTitles,
+        model,
+        temperature: 0.8,
+        max_tokens: 1000,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a recommendation engine for a movie and TV platform. Return valid JSON only.",
           },
-          interactionSignals: {
-            summary: params.interactionSignals.summary,
-            highlights: params.interactionSignals.highlights,
+          {
+            role: "user",
+            content: JSON.stringify({
+              profile: params.profile,
+              oneTimeAdjustments: {
+                includeGenres: params.includeGenres,
+                excludeGenres: params.excludeGenres,
+                includeTitles: params.includeTitles,
+                excludeTitles: params.excludeTitles,
+              },
+              interactionSignals: {
+                summary: params.interactionSignals.summary,
+                highlights: params.interactionSignals.highlights,
+              },
+              naturalLanguagePrompt: params.naturalLanguagePrompt,
+              contentPool,
+              instructions:
+                "Choose exactly 5 items from the content pool. Return JSON in the shape { recommendations: [{ contentId, explanation }] }. Each explanation must be 2 concise sentences.",
+            }),
           },
-          naturalLanguagePrompt: params.naturalLanguagePrompt,
-          contentPool,
-          instructions:
-            "Choose exactly 5 items from the content pool. Return JSON in the shape { recommendations: [{ contentId, explanation }] }. Each explanation must be 2 concise sentences.",
-        }),
+        ],
       },
-    ],
-  });
+      { signal: controller.signal as RequestInit["signal"] },
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const message = completion.choices[0]?.message;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

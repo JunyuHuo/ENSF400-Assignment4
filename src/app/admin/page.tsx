@@ -29,11 +29,8 @@ export default async function AdminPage({
   ]);
 
   const openReports = reports.filter((report) => report.status === "OPEN").length;
-  const [verifiedUsers, onboardedUsers, ratingCount, recommendationBatches, topRated, mostReported] =
+  const [onboardedUsers, ratingCount, recommendationBatches, topRated, mostReported] =
     await Promise.all([
-      prisma.user.count({
-        where: { emailVerified: true },
-      }),
       prisma.userProfile.count({
         where: { onboardingCompleted: true },
       }),
@@ -76,8 +73,8 @@ export default async function AdminPage({
             <p className="mt-3 text-3xl font-bold">{userCount}</p>
           </div>
           <div className="rounded-[24px] border border-[var(--line)] bg-white/80 p-5">
-            <p className="eyebrow">Verified</p>
-            <p className="mt-3 text-3xl font-bold">{verifiedUsers}</p>
+            <p className="eyebrow">Onboarded</p>
+            <p className="mt-3 text-3xl font-bold">{onboardedUsers}</p>
           </div>
           <div className="rounded-[24px] border border-[var(--line)] bg-white/80 p-5">
             <p className="eyebrow">Onboarded</p>
