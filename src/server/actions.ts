@@ -45,6 +45,8 @@ export async function registerAction(formData: FormData) {
     return redirectWithMessage("/register", "error", "That email is already registered.");
   }
 
+  const passwordHash = await hashPassword(parsed.data.password);
+
   const user = await prisma.user.create({
     data: {
       name: parsed.data.name,
