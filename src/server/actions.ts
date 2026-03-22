@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { clearSession, createSession, hashPassword, requireAdmin, requireUser, verifyPassword } from "@/lib/auth";
-import { generateRecommendationBatch } from "@/lib/recommendation";
+import { generateRecommendationBatch, generateGuestRecommendations } from "@/lib/recommendation";
 import {
   commentSchema,
   loginSchema,
@@ -323,4 +323,34 @@ export async function updateReportStatusAction(formData: FormData) {
 
   revalidatePath("/admin");
   redirect("/admin?success=Report status updated.");
+}
+
+export async function guestRecommendAction(formData: FormData) {
+  const favoriteGenres = formData.getAll("favoriteGenres") as string[];
+  const favoriteMoods = formData.getAll("favoriteMoods") as string[];
+  const pacingPreference = (formData.get("pacingPreference") as string) || null;
+  const naturalLanguagePrompt = (formData.get("naturalLanguagePrompt") as string) || "";
+
+  const base = "/guest";
+  const p = new URLSearchParams();
+
+  if (favoriteGenres.length) p.set("favoriteGenres", favoriteGenres.join(","));
+  if (favoriteMoods.length) p.set("favoriteMoods", favoriteMoods.join(","));
+  if (pacingPreference) p.set("pacingPreference", pacingPreference);
+  if (naturalLanguagePrompt.trim()) p.set("naturalLanguagePrompt", naturalLanguagePrompt.trim());
+
+  try {
+    await generateGuestRecommendations({
+      favoriteGenres,
+      favoriteMoods,
+      pacingPreference,
+      naturalLanguagePrompt,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "AI recommendation failed.";
+    redirect(`${base}?${p.toString()}&error=${encodeURIComponent(msg)}`);
+  }
+
+  const qs = p.toString();
+  redirect(`${base}?${qs}`);
 }
