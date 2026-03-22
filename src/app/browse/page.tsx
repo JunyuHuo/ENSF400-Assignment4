@@ -40,18 +40,30 @@ export default async function BrowsePage({
   });
 
   return (
-    <AppShell user={session.user}>
-      <section className="glass-card rounded-[32px] p-6 md:p-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="eyebrow">Content browsing</p>
-            <h1 className="section-title mt-3">Filter the catalog</h1>
-            <p className="muted mt-3 max-w-2xl">
-              Browse by genre, release year, and minimum rating. This page directly covers the content filtering requirement in your earlier assignments.
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", padding: "0 24px 60px" }}>
+      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        {/* Card wrapper */}
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "2rem", marginTop: 32 }}>
+          {/* Header */}
+          <div style={{ marginBottom: 24 }}>
+            <p style={{ color: "#e50914", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 700, marginBottom: 8 }}>
+              Content browsing
+            </p>
+            <h1 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "1.75rem", margin: "0 0 10px", fontWeight: 700 }}>
+              Filter the catalog
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.875rem", lineHeight: 1.6, maxWidth: "40rem" }}>
+              Browse by genre, release year, and minimum rating.
             </p>
           </div>
-          <form className="grid gap-3 sm:grid-cols-3">
-            <select name="genre" defaultValue={genre ?? ""}>
+
+          {/* Filters */}
+          <form style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
+            <select
+              name="genre"
+              defaultValue={genre ?? ""}
+              style={{ background: "#1a1a1a", color: "#fff", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px", width: "100%", colorScheme: "dark", fontSize: "0.875rem" }}
+            >
               <option value="">All genres</option>
               {GENRES.map((option) => (
                 <option key={option} value={option}>
@@ -59,7 +71,11 @@ export default async function BrowsePage({
                 </option>
               ))}
             </select>
-            <select name="year" defaultValue={year ? String(year) : ""}>
+            <select
+              name="year"
+              defaultValue={year ? String(year) : ""}
+              style={{ background: "#1a1a1a", color: "#fff", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px", width: "100%", colorScheme: "dark", fontSize: "0.875rem" }}
+            >
               <option value="">All years</option>
               {years.map((item) => (
                 <option key={item.year} value={item.year}>
@@ -67,7 +83,11 @@ export default async function BrowsePage({
                 </option>
               ))}
             </select>
-            <select name="rating" defaultValue={rating ? String(rating) : ""}>
+            <select
+              name="rating"
+              defaultValue={rating ? String(rating) : ""}
+              style={{ background: "#1a1a1a", color: "#fff", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px", width: "100%", colorScheme: "dark", fontSize: "0.875rem" }}
+            >
               <option value="">Any rating</option>
               {[4, 3, 2, 1].map((value) => (
                 <option key={value} value={value}>
@@ -75,33 +95,47 @@ export default async function BrowsePage({
                 </option>
               ))}
             </select>
-            <button className="btn-primary sm:col-span-3" type="submit">
+            <button
+              type="submit"
+              style={{ gridColumn: "1 / -1", background: "#e50914", color: "#fff", border: "none", borderRadius: 10, padding: "10px 14px", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer" }}
+            >
               Apply filters
             </button>
           </form>
+
+          {/* Banners */}
+          {params.success && <StatusBanner message={params.success} />}
+          {params.error && <StatusBanner kind="error" message={params.error} />}
+
+          {/* Results */}
+          <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
+            {content.map((item) => (
+              <article key={item.id} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "1rem 1.25rem" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                  <span style={{ padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: "0.75rem" }}>{item.type}</span>
+                  <span style={{ padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: "0.75rem" }}>{item.year}</span>
+                  <span style={{ padding: "4px 10px", borderRadius: 999, background: "rgba(229,9,20,0.12)", color: "#ff6b6b", fontSize: "0.75rem" }}>{item.averageRating.toFixed(1)} stars</span>
+                </div>
+                <h2 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "1.2rem", margin: "0 0 6px", fontWeight: 700 }}>
+                  {item.title}
+                </h2>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.8rem", margin: "0 0 10px" }}>
+                  {formatGenres(item.genres)} &bull; {item.pacing} pacing
+                </p>
+                <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.875rem", lineHeight: 1.6, marginBottom: 14 }}>
+                  {item.summary}
+                </p>
+                <Link
+                  href={`/content/${item.slug}`}
+                  style={{ display: "inline-block", padding: "8px 18px", borderRadius: 999, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", textDecoration: "none", fontSize: "0.8rem", fontWeight: 600 }}
+                >
+                  View details
+                </Link>
+              </article>
+            ))}
+          </div>
         </div>
-        <div className="mt-6 space-y-3">
-          <StatusBanner message={params.success} />
-          <StatusBanner kind="error" message={params.error} />
-        </div>
-        <div className="mt-8 grid-auto">
-          {content.map((item) => (
-            <article key={item.id} className="rounded-[28px] border border-[var(--line)] bg-white/82 p-5">
-              <div className="flex flex-wrap gap-2 text-sm">
-                <span className="pill">{item.type}</span>
-                <span className="pill">{item.year}</span>
-                <span className="pill">{item.averageRating.toFixed(1)} stars</span>
-              </div>
-              <h2 className="mt-4 text-2xl font-semibold">{item.title}</h2>
-              <p className="muted mt-2 text-sm">{formatGenres(item.genres)} • {item.pacing} pacing</p>
-              <p className="mt-4 text-sm leading-7 text-[var(--muted)]">{item.summary}</p>
-              <Link className="btn-ghost mt-5" href={`/content/${item.slug}`}>
-                View details
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
-    </AppShell>
+      </div>
+    </div>
   );
 }

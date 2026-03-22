@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
 
 export function MultiSelectGroup({
   name,
@@ -38,9 +37,9 @@ export function MultiSelectGroup({
                 padding: "6px 16px",
                 fontSize: 14,
                 fontWeight: 600,
-                background: isSelected ? "rgba(229,9,20,0.12)" : "#101010",
-                border: isSelected ? "1px solid rgba(229,9,20,0.9)" : "1px solid transparent",
-                color: "#ffffff",
+                background: isSelected ? "rgba(229,9,20,0.15)" : "rgba(255,255,255,0.05)",
+                border: isSelected ? "1px solid #e50914" : "1px solid rgba(255,255,255,0.15)",
+                color: isSelected ? "#fff" : "rgba(255,255,255,0.75)",
               }}
             >
               {option}

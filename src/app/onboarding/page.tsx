@@ -21,63 +21,132 @@ export default async function OnboardingPage({
   }
 
   return (
-    <AppShell user={session.user}>
-      <section className="glass-card rounded-[32px] p-6 md:p-8">
-        <p className="eyebrow">Onboarding questionnaire</p>
-        <h1 className="section-title mt-3">Build your baseline taste profile</h1>
-        <p className="muted mt-3 max-w-3xl">
-          This form maps directly to the assignment requirements: favorite genres, mood preferences, viewing habits, era preferences, and pacing. You can revisit it later to refine your profile.
-        </p>
-        <div className="mt-6 space-y-3">
-          <StatusBanner message={params.success} />
-          <StatusBanner kind="error" message={params.error} />
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", padding: "0 24px 60px" }}>
+      <div style={{ maxWidth: 680, margin: "0 auto" }}>
+        {/* Header */}
+        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "2rem", marginTop: 32 }}>
+          <p style={{ color: "#e50914", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 700, marginBottom: 8 }}>
+            Onboarding questionnaire
+          </p>
+          <h1 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "1.75rem", margin: "0 0 10px", fontWeight: 700 }}>
+            Build your baseline taste profile
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.875rem", lineHeight: 1.6 }}>
+            This form maps directly to the assignment requirements: favorite genres, mood preferences, viewing habits, era preferences, and pacing.
+          </p>
         </div>
-        <form action={saveOnboardingAction} className="mt-8 space-y-8">
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold">Genres</h2>
-            <p className="muted text-sm">Choose as many as you like.</p>
+
+        {/* Banners */}
+        {params.success && <div style={{ marginTop: 16 }}><StatusBanner message={params.success} /></div>}
+        {params.error && <div style={{ marginTop: 16 }}><StatusBanner kind="error" message={params.error} /></div>}
+
+        <form action={saveOnboardingAction} style={{ display: "flex", flexDirection: "column", gap: "1.5rem", marginTop: 16 }}>
+          {/* Genres */}
+          <section style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "2rem" }}>
+            <p style={{ color: "#e50914", textTransform: "uppercase", letterSpacing: "0.12em", fontSize: "0.7rem", fontWeight: 700, marginBottom: "0.75rem" }}>
+              Genres
+            </p>
+            <h2 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "1.25rem", marginBottom: "0.5rem", fontWeight: 700 }}>
+              What do you usually watch?
+            </h2>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.85rem", marginBottom: "1rem" }}>Choose as many as you like.</p>
             <MultiSelectGroup name="favoriteGenres" options={GENRES} selected={profile.favoriteGenres} />
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold">Moods</h2>
-            <p className="muted text-sm">How should your picks feel?</p>
+          </section>
+
+          {/* Moods */}
+          <section style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "2rem" }}>
+            <p style={{ color: "#e50914", textTransform: "uppercase", letterSpacing: "0.12em", fontSize: "0.7rem", fontWeight: 700, marginBottom: "0.75rem" }}>
+              Moods
+            </p>
+            <h2 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "1.25rem", marginBottom: "0.5rem", fontWeight: 700 }}>
+              How should your picks feel?
+            </h2>
             <MultiSelectGroup name="favoriteMoods" options={MOODS} selected={profile.favoriteMoods} />
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold">Viewing habits</h2>
+          </section>
+
+          {/* Viewing Habits */}
+          <section style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "2rem" }}>
+            <p style={{ color: "#e50914", textTransform: "uppercase", letterSpacing: "0.12em", fontSize: "0.7rem", fontWeight: 700, marginBottom: "0.75rem" }}>
+              Viewing Habits
+            </p>
+            <h2 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "1.25rem", marginBottom: "0.5rem", fontWeight: 700 }}>
+              When do you watch?
+            </h2>
             <MultiSelectGroup name="viewingHabits" options={VIEWING_HABITS} selected={profile.viewingHabits} />
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold">Favorite eras</h2>
+          </section>
+
+          {/* Favorite Eras */}
+          <section style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "2rem" }}>
+            <p style={{ color: "#e50914", textTransform: "uppercase", letterSpacing: "0.12em", fontSize: "0.7rem", fontWeight: 700, marginBottom: "0.75rem" }}>
+              Favorite Eras
+            </p>
+            <h2 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "1.25rem", marginBottom: "0.5rem", fontWeight: 700 }}>
+              What decade do you prefer?
+            </h2>
             <MultiSelectGroup name="favoriteEras" options={ERAS} selected={profile.favoriteEras} />
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-xl font-semibold">Pacing</h2>
-            <div className="grid gap-3 md:grid-cols-3">
-              {PACING_OPTIONS.map((option) => (
-                <label key={option} className="rounded-[20px] border border-[var(--line)] bg-white/75 p-4">
-                  <input
-                    className="mb-3 h-4 w-4"
-                    type="radio"
-                    name="pacingPreference"
-                    value={option}
-                    defaultChecked={profile.pacingPreference === option}
-                  />
-                  <div className="font-semibold">{option}</div>
-                  <p className="muted mt-1 text-sm">
-                    {option === "Slow"
-                      ? "Patient, meditative stories."
-                      : option === "Moderate"
-                        ? "Balanced pace with room to breathe."
-                        : "Quick hooks and fast progression."}
-                  </p>
-                </label>
-              ))}
+          </section>
+
+          {/* Pacing */}
+          <section style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "2rem" }}>
+            <p style={{ color: "#e50914", textTransform: "uppercase", letterSpacing: "0.12em", fontSize: "0.7rem", fontWeight: 700, marginBottom: "0.75rem" }}>
+              Pacing
+            </p>
+            <h2 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "1.25rem", marginBottom: "1rem", fontWeight: 700 }}>
+              How fast do you like your stories to move?
+            </h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.75rem" }}>
+              {PACING_OPTIONS.map((option) => {
+                const isSelected = profile.pacingPreference === option;
+                return (
+                  <label
+                    key={option}
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: isSelected ? "1px solid #e50914" : "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      padding: "1rem 1.25rem",
+                      cursor: "pointer",
+                      display: "block",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="pacingPreference"
+                      value={option}
+                      defaultChecked={isSelected}
+                      style={{ display: "none" }}
+                    />
+                    <div style={{ fontWeight: 700, color: "#fff", marginBottom: 4, fontSize: "0.95rem" }}>
+                      {option}
+                    </div>
+                    <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.8rem" }}>
+                      {option === "Slow"
+                        ? "Patient, meditative stories."
+                        : option === "Moderate"
+                          ? "Balanced pace with room to breathe."
+                          : "Quick hooks and fast progression."}
+                    </div>
+                  </label>
+                );
+              })}
             </div>
+          </section>
+
+          {/* Submit */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "0.5rem" }}>
+            <SubmitButton>Save taste profile</SubmitButton>
           </div>
-          <SubmitButton className="btn-primary">Save taste profile</SubmitButton>
         </form>
-      </section>
-    </AppShell>
+      </div>
+
+      <style>{`
+        input[type="radio"]:checked + div {
+          color: #e50914 !important;
+        }
+        label:has(input[type="radio"]:checked) {
+          border-color: #e50914 !important;
+        }
+      `}</style>
+    </div>
   );
 }
