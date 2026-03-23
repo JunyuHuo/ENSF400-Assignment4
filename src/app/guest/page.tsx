@@ -1,14 +1,10 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
-import { use } from "react";
 import { MultiSelectGroup } from "@/components/multi-select-group";
 import { ERAS, GENRES, MOODS, PACING_OPTIONS } from "@/lib/constants";
-import { guestRecommendAction } from "@/server/actions";
+import { generateGuestRecommendations } from "@/lib/recommendation";
 import { arrayFromSearchParam, formatGenres } from "@/lib/utils";
 
-export default function GuestPage({
+export default async function GuestPage({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -20,8 +16,7 @@ export default function GuestPage({
     error?: string;
   }>;
 }) {
-  const params = use(searchParams);
-  const [loading, setLoading] = useState(false);
+  const params = await searchParams;
   const favoriteGenres = arrayFromSearchParam(params.favoriteGenres);
   const favoriteMoods = arrayFromSearchParam(params.favoriteMoods);
   const favoriteEras = arrayFromSearchParam(params.favoriteEras);
@@ -33,6 +28,21 @@ export default function GuestPage({
     favoriteMoods.length > 0 ||
     Boolean(pacingPreference) ||
     Boolean(naturalLanguagePrompt.trim());
+
+  let recommendations: Awaited<ReturnType<typeof generateGuestRecommendations>> = [];
+
+  if (hasInput) {
+    try {
+      recommendations = await generateGuestRecommendations({
+        favoriteGenres,
+        favoriteMoods,
+        pacingPreference: pacingPreference || null,
+        naturalLanguagePrompt,
+      });
+    } catch (e) {
+      // error captured in errorMsg below
+    }
+  }
 
   return (
     <main style={{ padding: 0 }}>
@@ -46,15 +56,13 @@ export default function GuestPage({
 
           {errorMsg ? (
             <div style={{ marginTop: 16, padding: "12px 16px", background: "rgba(229,9,20,0.15)", border: "1px solid rgba(229,9,20,0.4)", borderRadius: 8 }}>
-              <p style={{ color: "#ff6b6b", fontSize: 14, margin: 0 }}>AI recommendation failed: {decodeURIComponent(errorMsg)}</p>
+              <p style={{ color: "#ff6b6b", fontSize: 14, margin: 0 }}>
+                AI recommendation failed: {decodeURIComponent(errorMsg)}
+              </p>
             </div>
           ) : null}
 
-          <form
-            action={guestRecommendAction}
-            onSubmit={() => setLoading(true)}
-            style={{ marginTop: 20, display: "block", gap: 18 }}
-          >
+          <form style={{ marginTop: 20, display: "block", gap: 18 }}>
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: "block", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", color: "#e50914", marginBottom: 8 }}>Favorite genres</label>
               <MultiSelectGroup name="favoriteGenres" options={GENRES} selected={favoriteGenres} />
@@ -86,36 +94,7 @@ export default function GuestPage({
             </div>
 
             <div style={{ display: "flex", justifyContent: "center", marginTop: 6 }}>
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  background: loading ? "#8b0000" : "#e50914",
-                  color: "#fff",
-                  borderRadius: 999,
-                  padding: "12px 28px",
-                  border: "none",
-                  boxShadow: "0 12px 30px rgba(229,9,20,0.28)",
-                  maxWidth: 360,
-                  width: "100%",
-                  fontWeight: 700,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  transition: "background 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                }}
-              >
-                {loading ? (
-                  <>
-                    <span style={{ display: "inline-block", width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-                    Searching with AI...
-                  </>
-                ) : (
-                  "Get guest recommendations"
-                )}
-              </button>
+              <button type="submit" style={{ background: "#e50914", color: "#fff", borderRadius: 999, padding: "12px 28px", border: "none", boxShadow: "0 12px 30px rgba(229,9,20,0.28)", maxWidth: 360, width: "100%", fontWeight: 700, cursor: "pointer" }}>Get guest recommendations</button>
             </div>
           </form>
 
@@ -132,20 +111,26 @@ export default function GuestPage({
           <h2 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: 20, margin: 0, fontWeight: 700 }}>Guest recommendation preview</h2>
           <p style={{ color: "rgba(255,255,255,0.8)", marginTop: 8, fontSize: 14, lineHeight: 1.6 }}>Guest mode uses the same content pool and recommendation engine style, without persistent profile history.</p>
 
-          {loading ? (
-            <div style={{ marginTop: 18, borderRadius: 8, border: "1px dashed rgba(255,255,255,0.1)", background: "#0f0f0f", padding: 40, textAlign: "center" }}>
-              <div style={{ display: "inline-block", width: 32, height: 32, border: "3px solid rgba(255,255,255,0.1)", borderTopColor: "#e50914", borderRadius: "50%", animation: "spin 0.7s linear infinite", marginBottom: 12 }} />
-              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>Calling AI recommendation engine...</p>
-            </div>
-          ) : hasInput ? (
-            <div style={{ marginTop: 18, borderRadius: 8, border: "1px dashed rgba(255,255,255,0.04)", background: "#0f0f0f", padding: 16 }}>
-              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>Pick a few genres or moods and optionally add a freeform prompt to generate recommendations.</p>
-            </div>
-          ) : (
-            <div style={{ marginTop: 18, borderRadius: 8, border: "1px dashed rgba(255,255,255,0.04)", background: "#0f0f0f", padding: 16 }}>
-              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>Pick a few genres or moods and optionally add a freeform prompt to generate recommendations.</p>
-            </div>
-          )}
+          <div style={{ marginTop: 18, display: "grid", gap: 12 }}>
+            {recommendations.length ? (
+              recommendations.map((item, index) => (
+                <article key={item.contentId} style={{ borderRadius: 8, background: "#0f0f0f", border: "1px solid rgba(255,255,255,0.04)", padding: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <span style={{ padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 12 }}>#{index + 1}</span>
+                      <span style={{ padding: "6px 10px", borderRadius: 999, background: "rgba(255,255,255,0.04)", color: "#fff", fontSize: 12 }}>{item.title}</span>
+                    </div>
+                    <div style={{ color: "#ff7b7b", fontWeight: 700 }}>★ {(item.score ?? 0).toFixed(1)}</div>
+                  </div>
+                  <p style={{ marginTop: 12, color: "rgba(255,255,255,0.85)", lineHeight: 1.6 }}>{item.explanation}</p>
+                </article>
+              ))
+            ) : (
+              <div style={{ borderRadius: 8, border: "1px dashed rgba(255,255,255,0.04)", background: "#0f0f0f", padding: 16 }}>
+                <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>Pick a few genres or moods and optionally add a freeform prompt to generate recommendations.</p>
+              </div>
+            )}
+          </div>
 
           {hasInput ? (
             <div style={{ marginTop: 16, borderRadius: 8, background: "rgba(255,255,255,0.03)", padding: 12 }}>
@@ -155,12 +140,6 @@ export default function GuestPage({
           ) : null}
         </section>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </main>
   );
 }
