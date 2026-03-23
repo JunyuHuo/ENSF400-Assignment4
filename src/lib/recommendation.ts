@@ -369,7 +369,7 @@ async function buildAiRecommendations(params: {
     completion = await openai.chat.completions.create(
       {
         model,
-        temperature: 0.8,
+        temperature: 0.0,
         max_tokens: 1000,
         messages: [
           {
