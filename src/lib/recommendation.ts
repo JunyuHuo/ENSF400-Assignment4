@@ -370,7 +370,7 @@ async function buildAiRecommendations(params: {
       {
         model,
         temperature: 0.0,
-        max_tokens: 1000,
+        max_tokens: 4096,
         messages: [
           {
             role: "system",
