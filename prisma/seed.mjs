@@ -184,6 +184,141 @@ const contentSeed = [
     explanationHint:
       "Great for viewers who want cozy mystery energy, humor, and charming leads.",
   },
+  {
+    slug: "in-the-mood-for-love",
+    title: "In the Mood for Love",
+    type: "Movie",
+    year: 2000,
+    maturityRating: "PG",
+    genres: ["Drama", "Romance"],
+    moods: ["Reflective", "Tender"],
+    pacing: "Slow",
+    runtime: "98 min",
+    summary:
+      "Two neighbors in 1960s Hong Kong form a quiet bond after suspecting their spouses are having an affair.",
+    explanationHint:
+      "A graceful choice for viewers drawn to reflective romance, longing, and elegant visual storytelling.",
+  },
+  {
+    slug: "chungking-express",
+    title: "Chungking Express",
+    type: "Movie",
+    year: 1994,
+    maturityRating: "PG-13",
+    genres: ["Drama", "Romance", "Comedy"],
+    moods: ["Reflective", "Witty"],
+    pacing: "Moderate",
+    runtime: "103 min",
+    summary:
+      "Two lovelorn Hong Kong policemen cross paths with women who shift the emotional rhythm of their lives.",
+    explanationHint:
+      "Works beautifully for users who like offbeat romance, city energy, and introspective character moments.",
+  },
+  {
+    slug: "hero",
+    title: "Hero",
+    type: "Movie",
+    year: 2002,
+    maturityRating: "PG-13",
+    genres: ["Action", "Drama"],
+    moods: ["Stylish", "Reflective"],
+    pacing: "Moderate",
+    runtime: "99 min",
+    summary:
+      "A warrior recounts how he defeated legendary assassins in a story of sacrifice, memory, and political destiny.",
+    explanationHint:
+      "A strong fit for people who want action with visual elegance and a meditative emotional core.",
+  },
+  {
+    slug: "parasite",
+    title: "Parasite",
+    type: "Movie",
+    year: 2019,
+    maturityRating: "R",
+    genres: ["Thriller", "Drama", "Comedy"],
+    moods: ["Dark", "Witty"],
+    pacing: "Fast",
+    runtime: "132 min",
+    summary:
+      "A struggling family infiltrates a wealthy household, setting off a sharp and increasingly dangerous class satire.",
+    explanationHint:
+      "Excellent for viewers who enjoy clever plotting, social tension, and tonal shifts that stay gripping.",
+  },
+  {
+    slug: "everything-everywhere-all-at-once",
+    title: "Everything Everywhere All at Once",
+    type: "Movie",
+    year: 2022,
+    maturityRating: "R",
+    genres: ["Sci-Fi", "Action", "Comedy", "Drama"],
+    moods: ["Energetic", "Emotional"],
+    pacing: "Fast",
+    runtime: "139 min",
+    summary:
+      "A stressed laundromat owner is pulled into a multiverse crisis that forces her to reconnect with family and possibility.",
+    explanationHint:
+      "A vivid match for users who want inventive action, emotional payoff, and big ideas moving at full speed.",
+  },
+  {
+    slug: "interstellar",
+    title: "Interstellar",
+    type: "Movie",
+    year: 2014,
+    maturityRating: "PG-13",
+    genres: ["Sci-Fi", "Drama", "Adventure"],
+    moods: ["Epic", "Thoughtful"],
+    pacing: "Moderate",
+    runtime: "169 min",
+    summary:
+      "A former pilot joins a mission through a wormhole to save humanity while carrying the emotional weight of leaving his family behind.",
+    explanationHint:
+      "Ideal for people who want large-scale science fiction with emotional stakes and reflective themes.",
+  },
+  {
+    slug: "coco",
+    title: "Coco",
+    type: "Movie",
+    year: 2017,
+    maturityRating: "PG",
+    genres: ["Animation", "Family", "Adventure"],
+    moods: ["Warm", "Emotional"],
+    pacing: "Moderate",
+    runtime: "105 min",
+    summary:
+      "A music-loving boy journeys into the Land of the Dead to uncover family history, memory, and belonging.",
+    explanationHint:
+      "A heartfelt option for viewers looking for warmth, family themes, and emotionally resonant animation.",
+  },
+  {
+    slug: "mad-max-fury-road",
+    title: "Mad Max: Fury Road",
+    type: "Movie",
+    year: 2015,
+    maturityRating: "R",
+    genres: ["Action", "Adventure"],
+    moods: ["Intense", "Stylish"],
+    pacing: "Fast",
+    runtime: "120 min",
+    summary:
+      "In a brutal wasteland, a drifter and a rebel driver race across the desert in a relentless fight for freedom.",
+    explanationHint:
+      "A great pick for users who want pure momentum, visual style, and high-impact action from start to finish.",
+  },
+  {
+    slug: "blue-eye-samurai",
+    title: "Blue Eye Samurai",
+    type: "TV Show",
+    year: 2023,
+    maturityRating: "TV-MA",
+    genres: ["Animation", "Action", "Drama"],
+    moods: ["Intense", "Stylish"],
+    pacing: "Fast",
+    runtime: "45 min episodes",
+    summary:
+      "A master swordswoman in Edo-period Japan pursues revenge while hiding her identity and confronting her past.",
+    explanationHint:
+      "Strong for viewers who like revenge-driven action, visual flair, and character-focused storytelling.",
+  },
 ];
 
 async function main() {

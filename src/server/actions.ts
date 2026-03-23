@@ -131,9 +131,14 @@ export async function saveOnboardingAction(formData: FormData) {
     },
   });
 
-  await generateRecommendationBatch({
-    userId: session.user.id,
-  });
+  try {
+    await generateRecommendationBatch({
+      userId: session.user.id,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Real AI recommendation failed.";
+    return redirectWithMessage("/onboarding", "error", message);
+  }
 
   redirect("/dashboard?success=Your taste profile is ready.");
 }
@@ -153,15 +158,20 @@ export async function generateRecommendationsAction(formData: FormData) {
     return redirectWithMessage("/dashboard", "error", "Could not process the recommendation filters.");
   }
 
-  await generateRecommendationBatch({
-    userId: session.user.id,
-    includeGenres: parsed.data.includeGenres,
-    excludeGenres: parsed.data.excludeGenres,
-    includeTitles: parsed.data.includeTitles,
-    excludeTitles: parsed.data.excludeTitles,
-    naturalLanguagePrompt: parsed.data.naturalLanguagePrompt ?? "",
-    persistAdjustments: parsed.data.mode === "permanent",
-  });
+  try {
+    await generateRecommendationBatch({
+      userId: session.user.id,
+      includeGenres: parsed.data.includeGenres,
+      excludeGenres: parsed.data.excludeGenres,
+      includeTitles: parsed.data.includeTitles,
+      excludeTitles: parsed.data.excludeTitles,
+      naturalLanguagePrompt: parsed.data.naturalLanguagePrompt ?? "",
+      persistAdjustments: parsed.data.mode === "permanent",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Real AI recommendation failed.";
+    return redirectWithMessage("/dashboard", "error", message);
+  }
 
   revalidatePath("/dashboard");
   redirect("/dashboard?success=Recommendations refreshed.");
@@ -207,9 +217,16 @@ export async function submitRatingAction(formData: FormData) {
     },
   });
 
-  await generateRecommendationBatch({
-    userId: session.user.id,
-  });
+  try {
+    await generateRecommendationBatch({
+      userId: session.user.id,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Real AI recommendation failed.";
+    revalidatePath("/browse");
+    revalidatePath("/dashboard");
+    redirect(`/content/${formData.get("slug")}?success=${encodeURIComponent("Rating saved.")}&error=${encodeURIComponent(`Recommendations were not refreshed: ${message}`)}`);
+  }
 
   revalidatePath("/browse");
   revalidatePath("/dashboard");
@@ -244,9 +261,16 @@ export async function submitReviewAction(formData: FormData) {
     },
   });
 
-  await generateRecommendationBatch({
-    userId: session.user.id,
-  });
+  try {
+    await generateRecommendationBatch({
+      userId: session.user.id,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Real AI recommendation failed.";
+    revalidatePath(`/content/${formData.get("slug")}`);
+    revalidatePath("/dashboard");
+    redirect(`/content/${formData.get("slug")}?success=${encodeURIComponent("Review saved.")}&error=${encodeURIComponent(`Recommendations were not refreshed: ${message}`)}`);
+  }
 
   revalidatePath(`/content/${formData.get("slug")}`);
   revalidatePath("/dashboard");
@@ -272,9 +296,16 @@ export async function submitCommentAction(formData: FormData) {
     },
   });
 
-  await generateRecommendationBatch({
-    userId: session.user.id,
-  });
+  try {
+    await generateRecommendationBatch({
+      userId: session.user.id,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Real AI recommendation failed.";
+    revalidatePath(`/content/${formData.get("slug")}`);
+    revalidatePath("/dashboard");
+    redirect(`/content/${formData.get("slug")}?success=${encodeURIComponent("Comment posted.")}&error=${encodeURIComponent(`Recommendations were not refreshed: ${message}`)}`);
+  }
 
   revalidatePath(`/content/${formData.get("slug")}`);
   revalidatePath("/dashboard");

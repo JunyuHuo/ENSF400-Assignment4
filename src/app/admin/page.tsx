@@ -77,8 +77,8 @@ export default async function AdminPage({
             <p className="mt-3 text-3xl font-bold">{onboardedUsers}</p>
           </div>
           <div className="rounded-[24px] border border-[var(--line)] bg-white/80 p-5">
-            <p className="eyebrow">Onboarded</p>
-            <p className="mt-3 text-3xl font-bold">{onboardedUsers}</p>
+            <p className="eyebrow">Reports</p>
+            <p className="mt-3 text-3xl font-bold">{reports.length}</p>
           </div>
           <div className="rounded-[24px] border border-[var(--line)] bg-white/80 p-5">
             <p className="eyebrow">Reviews</p>

@@ -31,6 +31,145 @@ type RecommendationCandidate = {
   explanation: string;
 };
 
+export type OutsideRecommendation = {
+  title: string;
+  type: string;
+  year: string;
+  explanation: string;
+};
+
+type HybridRecommendationResult = {
+  libraryRecommendations: RecommendationCandidate[];
+  outsideRecommendations: OutsideRecommendation[];
+};
+
+function findBalancedJsonBlock(raw: string) {
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (start === -1 && (char === "{" || char === "[")) {
+      start = index;
+      depth = 1;
+      continue;
+    }
+
+    if (start !== -1 && (char === "{" || char === "[")) {
+      depth += 1;
+      continue;
+    }
+
+    if (start !== -1 && (char === "}" || char === "]")) {
+      depth -= 1;
+
+      if (depth === 0) {
+        return raw.slice(start, index + 1);
+      }
+    }
+  }
+
+  return raw;
+}
+
+function extractJsonCandidate(raw: string) {
+  let jsonCandidate = raw.trim();
+
+  if (jsonCandidate.startsWith("```")) {
+    jsonCandidate = jsonCandidate.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  }
+
+  if (!jsonCandidate.startsWith("{") && !jsonCandidate.startsWith("[")) {
+    const firstBrace = jsonCandidate.indexOf("{");
+    const firstBracket = jsonCandidate.indexOf("[");
+    const startIndex = [firstBrace, firstBracket]
+      .filter((value) => value >= 0)
+      .sort((left, right) => left - right)[0];
+
+    if (startIndex !== undefined) {
+      jsonCandidate = jsonCandidate.slice(startIndex);
+    }
+  }
+
+  jsonCandidate = findBalancedJsonBlock(jsonCandidate);
+
+  return jsonCandidate
+    .replace(/^\uFEFF/, "")
+    .replace(/[\u201C\u201D]/g, "\"")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\.\.\./g, "")
+    .replace(/,\s*([}\]])/g, "$1")
+    .trim();
+}
+
+function buildOutsideRecommendationPrompt(params: {
+  profile: PreferenceProfile;
+  interactionSignals: InteractionSignals;
+  naturalLanguagePrompt: string;
+}) {
+  return JSON.stringify({
+    task: "Return exactly 5 outside-the-library personalized movie or TV recommendations.",
+    hardRules: [
+      "Return exactly 5 outside-the-library recommendations.",
+      "Prefer well-known real titles that are not already in the local CineMatch library.",
+      "Each explanation must be 1 to 2 short sentences, specific and natural.",
+      "Do not use ellipses, comments, trailing notes, or placeholder text.",
+      "Use double quotes for all JSON keys and string values.",
+      "Do not wrap the JSON in markdown fences.",
+      "Return no text outside the JSON object.",
+    ],
+    outputSchema: {
+      outsideRecommendations: [
+        {
+          title: "real movie or show title",
+          type: "Movie or TV Show",
+          year: "release year",
+          explanation: "short personalized reason",
+        },
+      ],
+    },
+    selectionGuidance: {
+      prioritize: [
+        "profile taste match",
+        "interactionSignals",
+        "naturalLanguagePrompt",
+      ],
+      avoid: [
+        "duplicates",
+        "titles already likely covered by the local CineMatch catalog",
+      ],
+    },
+    profile: params.profile,
+    interactionSignals: {
+      summary: params.interactionSignals.summary,
+      highlights: params.interactionSignals.highlights,
+    },
+    naturalLanguagePrompt: params.naturalLanguagePrompt,
+  });
+}
+
 const positiveWords = [
   "love",
   "great",
@@ -57,10 +196,6 @@ const negativeWords = [
   "overrated",
 ];
 
-function matchesAny(source: string[], target: string[]) {
-  return target.some((value) => source.includes(value));
-}
-
 function addToMap(target: Map<string, number>, values: string[], delta: number) {
   values.forEach((value) => {
     target.set(value, (target.get(value) ?? 0) + delta);
@@ -81,6 +216,47 @@ function getSentimentScore(text: string) {
   const negativeHits = negativeWords.filter((word) => value.includes(word)).length;
 
   return positiveHits - negativeHits;
+}
+
+function matchesAny(source: string[], target: string[]) {
+  return target.some((value) => source.includes(value));
+}
+
+function getPromptBoost({
+  prompt,
+  item,
+}: {
+  prompt: string;
+  item: Awaited<ReturnType<typeof prisma.content.findMany>>[number];
+}) {
+  if (!prompt.trim()) {
+    return 0;
+  }
+
+  const normalizedPrompt = prompt.toLowerCase();
+  let boost = 0;
+
+  item.genres.forEach((genre) => {
+    if (normalizedPrompt.includes(genre.toLowerCase())) {
+      boost += 2;
+    }
+  });
+
+  item.moods.forEach((mood) => {
+    if (normalizedPrompt.includes(mood.toLowerCase())) {
+      boost += 1.5;
+    }
+  });
+
+  if (normalizedPrompt.includes(item.title.toLowerCase())) {
+    boost += 3;
+  }
+
+  if (normalizedPrompt.includes(item.type.toLowerCase())) {
+    boost += 0.5;
+  }
+
+  return boost;
 }
 
 async function buildInteractionSignals(userId: string): Promise<InteractionSignals> {
@@ -170,44 +346,7 @@ async function buildInteractionSignals(userId: string): Promise<InteractionSigna
   };
 }
 
-function getPromptBoost({
-  prompt,
-  item,
-}: {
-  prompt: string;
-  item: Awaited<ReturnType<typeof prisma.content.findMany>>[number];
-}) {
-  if (!prompt.trim()) {
-    return 0;
-  }
-
-  const normalizedPrompt = prompt.toLowerCase();
-  let boost = 0;
-
-  item.genres.forEach((genre: string) => {
-    if (normalizedPrompt.includes(genre.toLowerCase())) {
-      boost += 2;
-    }
-  });
-
-  item.moods.forEach((mood: string) => {
-    if (normalizedPrompt.includes(mood.toLowerCase())) {
-      boost += 1.5;
-    }
-  });
-
-  if (normalizedPrompt.includes(item.title.toLowerCase())) {
-    boost += 3;
-  }
-
-  if (normalizedPrompt.includes(item.type.toLowerCase())) {
-    boost += 0.5;
-  }
-
-  return boost;
-}
-
-function buildFallbackRecommendations(params: {
+function buildLibraryRecommendations(params: {
   content: Awaited<ReturnType<typeof prisma.content.findMany>>;
   profile: PreferenceProfile;
   interactionSignals: InteractionSignals;
@@ -216,7 +355,7 @@ function buildFallbackRecommendations(params: {
   includeTitles: string[];
   excludeTitles: string[];
   naturalLanguagePrompt: string;
-}) {
+}): RecommendationCandidate[] {
   const {
     content,
     profile,
@@ -230,27 +369,26 @@ function buildFallbackRecommendations(params: {
 
   const boostedGenres = [...profile.favoriteGenres, ...includeGenres];
   const blockedGenres = [...profile.excludeGenres, ...excludeGenres];
-  const boostedTitles = [...profile.includeTitles, ...includeTitles].map((item: string) =>
+  const boostedTitles = [...profile.includeTitles, ...includeTitles].map((item) =>
     item.toLowerCase(),
   );
-  const blockedTitles = [...profile.excludeTitles, ...excludeTitles].map((item: string) =>
+  const blockedTitles = [...profile.excludeTitles, ...excludeTitles].map((item) =>
     item.toLowerCase(),
   );
 
-  const ranked: RecommendationCandidate[] = content
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((item: any) => {
+  return content
+    .map((item) => {
       let score = 0;
-      const interactionGenreBoost = item.genres.reduce((total: number, genre: string) => {
+      const interactionGenreBoost = item.genres.reduce((total, genre) => {
         return total + (interactionSignals.likedGenres.get(genre) ?? 0);
       }, 0);
-      const interactionGenrePenalty = item.genres.reduce((total: number, genre: string) => {
+      const interactionGenrePenalty = item.genres.reduce((total, genre) => {
         return total + (interactionSignals.dislikedGenres.get(genre) ?? 0);
       }, 0);
-      const interactionMoodBoost = item.moods.reduce((total: number, mood: string) => {
+      const interactionMoodBoost = item.moods.reduce((total, mood) => {
         return total + (interactionSignals.likedMoods.get(mood) ?? 0);
       }, 0);
-      const interactionMoodPenalty = item.moods.reduce((total: number, mood: string) => {
+      const interactionMoodPenalty = item.moods.reduce((total, mood) => {
         return total + (interactionSignals.dislikedMoods.get(mood) ?? 0);
       }, 0);
 
@@ -297,21 +435,13 @@ function buildFallbackRecommendations(params: {
 
       const explanationParts = [
         matchesAny(item.genres, profile.favoriteGenres)
-          ? `It lines up with your ${item.genres.filter((genre: string) => profile.favoriteGenres.includes(genre)).join(", ")} interests.`
-          : "It broadens your library without drifting far from your baseline taste.",
-        interactionGenreBoost > interactionGenrePenalty
-          ? `Your ratings and write-ups suggest you respond well to similar ${item.genres.join(", ").toLowerCase()} material.`
-          : interactionGenrePenalty > 0
-            ? `It survives despite some weaker overlap with genres you usually score lower.`
-            : `It remains compatible with the interaction patterns you've built so far.`,
+          ? `It matches your interest in ${item.genres.filter((genre) => profile.favoriteGenres.includes(genre)).join(", ")}.`
+          : "It stays close to the taste profile you built.",
         matchesAny(item.moods, profile.favoriteMoods)
-          ? `The ${item.moods.filter((mood: string) => profile.favoriteMoods.includes(mood)).join(", ").toLowerCase()} tone matches the moods you selected.`
-          : `Its ${item.pacing.toLowerCase()} pacing keeps it close to the viewing rhythm you prefer.`,
-        naturalLanguagePrompt
-          ? `It also reflects your latest request: "${naturalLanguagePrompt}".`
-          : "",
+          ? `Its ${item.moods.filter((mood) => profile.favoriteMoods.includes(mood)).join(", ").toLowerCase()} tone fits the mood you selected.`
+          : `Its ${item.pacing.toLowerCase()} pacing keeps it compatible with your viewing preferences.`,
         item.explanationHint,
-      ];
+      ].filter(Boolean);
 
       return {
         contentId: item.id,
@@ -320,14 +450,132 @@ function buildFallbackRecommendations(params: {
         explanation: explanationParts.join(" "),
       };
     })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .sort((left: any, right: any) => right.score - left.score)
+    .sort((left, right) => right.score - left.score)
     .slice(0, 5);
-
-  return ranked;
 }
 
-async function buildAiRecommendations(params: {
+async function buildOutsideRecommendations(params: {
+  profile: PreferenceProfile;
+  interactionSignals: InteractionSignals;
+  naturalLanguagePrompt: string;
+}): Promise<OutsideRecommendation[]> {
+  const apiKey = process.env.OVH_AI_API_KEY || process.env.OPENAI_API_KEY;
+  const baseURL = process.env.OVH_AI_BASE_URL || "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1";
+  const model = process.env.OVH_AI_MODEL || process.env.OPENAI_MODEL || "gpt-oss-120b";
+
+  if (!apiKey) {
+    return [];
+  }
+
+  const openai = new OpenAI({
+    apiKey,
+    baseURL,
+  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45_000);
+
+  async function requestCompletion(attempt: number) {
+    return openai.chat.completions.create(
+      {
+        model,
+        temperature: 0.0,
+        max_tokens: 1200,
+        messages: [
+          {
+            role: "system",
+            content:
+              attempt === 0
+                ? "You are a movie and TV recommendation engine. Output only valid JSON. Return exactly five outsideRecommendations and no other keys."
+                : "Your previous answer was invalid. Output only minified valid JSON with double quotes. Return only an object with outsideRecommendations. No ellipses, no comments, no markdown, and no text outside the JSON object.",
+          },
+          {
+            role: "user",
+            content: buildOutsideRecommendationPrompt({
+              profile: params.profile,
+              interactionSignals: params.interactionSignals,
+              naturalLanguagePrompt: params.naturalLanguagePrompt,
+            }),
+          },
+        ],
+      },
+      { signal: controller.signal as RequestInit["signal"] },
+    );
+  }
+
+  function parseOutsideResponse(raw: string) {
+    const jsonCandidate = extractJsonCandidate(raw);
+    const parsed = JSON.parse(jsonCandidate);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const outsideRecs: any[] = parsed?.outsideRecommendations ?? parsed?.externalRecommendations ?? null;
+
+    if (!outsideRecs?.length) {
+      return [];
+    }
+
+    const normalizedOutsideRecommendations = outsideRecs
+      .slice(0, 5)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((recommendation: any) => {
+        const title = String(recommendation.title ?? "").trim();
+        const type = String(recommendation.type ?? recommendation.format ?? "").trim();
+        const year = String(recommendation.year ?? recommendation.releaseYear ?? recommendation.era ?? "").trim();
+        const explanation = String(recommendation.explanation ?? recommendation.reason ?? "").trim();
+
+        if (!title || !type || !year || !explanation) {
+          return null;
+        }
+
+        return {
+          title,
+          type,
+          year,
+          explanation,
+        };
+      })
+      .filter((item): item is OutsideRecommendation => item !== null);
+
+    const uniqueOutsideRecommendations = normalizedOutsideRecommendations.filter(
+      (item, index, items) => items.findIndex((candidate) => candidate.title.toLowerCase() === item.title.toLowerCase()) === index,
+    );
+
+    if (uniqueOutsideRecommendations.length < 5) {
+      console.error("AI outside recommendations returned invalid, duplicate, or incomplete items.");
+      return [];
+    }
+
+    return uniqueOutsideRecommendations.slice(0, 5);
+  }
+
+  try {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const completion = await requestCompletion(attempt);
+      const message = completion.choices[0]?.message;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = message?.content || (message as any).reasoning_content;
+
+      if (!raw) {
+        continue;
+      }
+
+      try {
+        const parsed = parseOutsideResponse(raw);
+        if (parsed.length) {
+          return parsed;
+        }
+      } catch (error) {
+        console.error(`AI outside recommendation parsing error on attempt ${attempt + 1}:`, error);
+      }
+    }
+
+    return [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function buildRecommendations(params: {
   content: Awaited<ReturnType<typeof prisma.content.findMany>>;
   profile: PreferenceProfile;
   interactionSignals: InteractionSignals;
@@ -336,126 +584,26 @@ async function buildAiRecommendations(params: {
   includeTitles: string[];
   excludeTitles: string[];
   naturalLanguagePrompt: string;
-}) {
-  const apiKey = process.env.OVH_AI_API_KEY || process.env.OPENAI_API_KEY;
-  const baseURL = process.env.OVH_AI_BASE_URL || "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1";
-  const model = process.env.OVH_AI_MODEL || process.env.OPENAI_MODEL || "gpt-oss-120b";
-
-  if (!apiKey) {
-    return null;
-  }
-
-  const openai = new OpenAI({
-    apiKey,
-    baseURL,
-  });
-
-  const contentPool = params.content.map((item) => ({
-    id: item.id,
-    title: item.title,
-    type: item.type,
-    year: item.year,
-    genres: item.genres,
-    moods: item.moods,
-    pacing: item.pacing,
-    summary: item.summary,
-  }));
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
-
-  let completion;
-  try {
-    completion = await openai.chat.completions.create(
-      {
-        model,
-        temperature: 0.0,
-        max_tokens: 4096,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a recommendation engine. Respond with ONLY a JSON object in this exact format: {\"recommendations\": [{\"contentId\": \"<id>\", \"explanation\": \"<2-sentence reason>\"}]}. No text before or after the JSON. No markdown fences.",
-          },
-          {
-            role: "user",
-            content: JSON.stringify({
-              profile: params.profile,
-              oneTimeAdjustments: {
-                includeGenres: params.includeGenres,
-                excludeGenres: params.excludeGenres,
-                includeTitles: params.includeTitles,
-                excludeTitles: params.excludeTitles,
-              },
-              interactionSignals: {
-                summary: params.interactionSignals.summary,
-                highlights: params.interactionSignals.highlights,
-              },
-              naturalLanguagePrompt: params.naturalLanguagePrompt,
-              contentPool,
-              instructions:
-                "Choose exactly 5 items from the content pool. Return JSON in the shape { recommendations: [{ contentId, explanation }] }. Each explanation must be 2 concise sentences.",
-            }),
-          },
-        ],
-      },
-      { signal: controller.signal as RequestInit["signal"] },
-    );
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  const message = completion.choices[0]?.message;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let raw = message?.content || (message as any).reasoning_content;
-
-  if (!raw) {
-    return null;
-  }
+}): Promise<HybridRecommendationResult> {
+  const libraryRecommendations = buildLibraryRecommendations(params);
+  let outsideRecommendations: OutsideRecommendation[] = [];
 
   try {
-    // Robust JSON extraction
-    // If the response doesn't start with '{', find the first '{' and try from there
-    let jsonCandidate = raw.trim();
-    if (!jsonCandidate.startsWith("{")) {
-      const firstBrace = jsonCandidate.indexOf("{");
-      if (firstBrace !== -1) {
-        jsonCandidate = jsonCandidate.slice(firstBrace);
-      }
-    }
-    // Non-greedy match to avoid consuming trailing non-JSON text
-    const jsonMatch = jsonCandidate.match(/\{[\s\S]*?\}/);
-    if (jsonMatch) {
-      jsonCandidate = jsonMatch[0];
-    }
-
-    const parsed = JSON.parse(jsonCandidate);
-
-    // Support both {"recommendations": [...]} and raw [...]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const recs: any[] = Array.isArray(parsed)
-      ? parsed
-      : parsed?.recommendations ?? null;
-
-    if (!recs?.length) {
-      return null;
-    }
-
-    return recs
-      .slice(0, 5)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((recommendation: any, index: number) => ({
-        contentId: recommendation.contentId ?? recommendation.id ?? recommendation.itemId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        title: contentPool.find((item: any) => item.id === (recommendation.contentId ?? recommendation.id ?? recommendation.itemId))?.title ?? `Pick ${index + 1}`,
-        score: 100 - index,
-        explanation: recommendation.explanation ?? recommendation.reason ?? "",
-      }));
+    outsideRecommendations = await buildOutsideRecommendations({
+      profile: params.profile,
+      interactionSignals: params.interactionSignals,
+      naturalLanguagePrompt: params.naturalLanguagePrompt,
+    });
   } catch (error) {
-    console.error("AI recommendation parsing error:", error);
-    return null;
+    console.error("AI outside recommendation request failed:", error);
   }
+
+  return {
+    libraryRecommendations,
+    outsideRecommendations,
+  };
 }
+
 export async function generateRecommendationBatch({
   userId,
   includeGenres = [],
@@ -500,34 +648,25 @@ export async function generateRecommendationBatch({
     });
   }
 
-  let recommendations: RecommendationCandidate[] | null = null;
-  let explanationSource = "openai";
+  const recommendations = await buildRecommendations({
+    content,
+    profile,
+    interactionSignals,
+    includeGenres,
+    excludeGenres,
+    includeTitles,
+    excludeTitles,
+    naturalLanguagePrompt,
+  });
 
-  try {
-    recommendations = await buildAiRecommendations({
-      content,
-      profile,
-      interactionSignals,
-      includeGenres,
-      excludeGenres,
-      includeTitles,
-      excludeTitles,
-      naturalLanguagePrompt,
-    });
-  } catch {
-    recommendations = null;
-  }
-
-  if (!recommendations?.length) {
-    throw new Error(
-      "AI recommendation failed. Please check your OVH_AI_API_KEY / OPENAI_API_KEY environment variable."
-    );
+  if (!recommendations.libraryRecommendations.length) {
+    throw new Error("Could not generate recommendations.");
   }
 
   const batch = await prisma.recommendationBatch.create({
     data: {
       userId,
-      explanationSource,
+      explanationSource: "ai",
       promptSnapshot: {
         profile,
         interactionSignals: {
@@ -539,9 +678,10 @@ export async function generateRecommendationBatch({
         includeTitles,
         excludeTitles,
         naturalLanguagePrompt,
+        outsideRecommendations: recommendations.outsideRecommendations,
       },
       items: {
-        create: recommendations.map((item, index) => ({
+        create: recommendations.libraryRecommendations.map((item, index) => ({
           contentId: item.contentId,
           rank: index + 1,
           explanation: item.explanation,
@@ -574,6 +714,43 @@ export async function getLatestRecommendations(userId: string) {
       },
     },
   });
+}
+
+export function getOutsideRecommendationsFromPromptSnapshot(promptSnapshot: unknown): OutsideRecommendation[] {
+  if (!promptSnapshot || typeof promptSnapshot !== "object" || !("outsideRecommendations" in promptSnapshot)) {
+    return [];
+  }
+
+  const rawRecommendations = (promptSnapshot as { outsideRecommendations?: unknown }).outsideRecommendations;
+
+  if (!Array.isArray(rawRecommendations)) {
+    return [];
+  }
+
+  return rawRecommendations
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const recommendation = item as Record<string, unknown>;
+      const title = String(recommendation.title ?? "").trim();
+      const type = String(recommendation.type ?? "").trim();
+      const year = String(recommendation.year ?? "").trim();
+      const explanation = String(recommendation.explanation ?? "").trim();
+
+      if (!title || !type || !year || !explanation) {
+        return null;
+      }
+
+      return {
+        title,
+        type,
+        year,
+        explanation,
+      };
+    })
+    .filter((item): item is OutsideRecommendation => item !== null);
 }
 
 export async function getInteractionInsights(userId: string) {
@@ -618,7 +795,7 @@ export async function generateGuestRecommendations({
     highlights: ["Guest mode does not persist ratings, reviews, or comments."],
   };
 
-  const recommendations = await buildAiRecommendations({
+  const recommendations = await buildRecommendations({
     content,
     profile: guestProfile,
     interactionSignals,
@@ -629,10 +806,8 @@ export async function generateGuestRecommendations({
     naturalLanguagePrompt,
   });
 
-  if (!recommendations?.length) {
-    throw new Error(
-      "AI recommendation failed. Please check your OVH_AI_API_KEY / OPENAI_API_KEY environment variable."
-    );
+  if (!recommendations.libraryRecommendations.length) {
+    throw new Error("Could not generate recommendations.");
   }
 
   return recommendations;

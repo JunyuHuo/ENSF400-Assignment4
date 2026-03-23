@@ -110,7 +110,7 @@ export default async function ContentDetailPage({
             <textarea
               className="mt-4"
               name="body"
-              maxLength={3000}
+              maxLength={500}
               defaultValue={existingReview?.body ?? ""}
               placeholder="What worked for you, what didn't, and who would enjoy it?"
             />
