@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { use } from "react";
 import { MultiSelectGroup } from "@/components/multi-select-group";
 import { ERAS, GENRES, MOODS, PACING_OPTIONS } from "@/lib/constants";
 import { guestRecommendAction } from "@/server/actions";
@@ -19,8 +20,8 @@ export default function GuestPage({
     error?: string;
   }>;
 }) {
+  const params = use(searchParams);
   const [loading, setLoading] = useState(false);
-  const params = searchParams;
   const favoriteGenres = arrayFromSearchParam(params.favoriteGenres);
   const favoriteMoods = arrayFromSearchParam(params.favoriteMoods);
   const favoriteEras = arrayFromSearchParam(params.favoriteEras);
@@ -51,7 +52,7 @@ export default function GuestPage({
 
           <form
             action={guestRecommendAction}
-            onSubmit={(e) => setLoading(true)}
+            onSubmit={() => setLoading(true)}
             style={{ marginTop: 20, display: "block", gap: 18 }}
           >
             <div style={{ marginBottom: 12 }}>
@@ -135,6 +136,10 @@ export default function GuestPage({
             <div style={{ marginTop: 18, borderRadius: 8, border: "1px dashed rgba(255,255,255,0.1)", background: "#0f0f0f", padding: 40, textAlign: "center" }}>
               <div style={{ display: "inline-block", width: 32, height: 32, border: "3px solid rgba(255,255,255,0.1)", borderTopColor: "#e50914", borderRadius: "50%", animation: "spin 0.7s linear infinite", marginBottom: 12 }} />
               <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 14 }}>Calling AI recommendation engine...</p>
+            </div>
+          ) : hasInput ? (
+            <div style={{ marginTop: 18, borderRadius: 8, border: "1px dashed rgba(255,255,255,0.04)", background: "#0f0f0f", padding: 16 }}>
+              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 14 }}>Pick a few genres or moods and optionally add a freeform prompt to generate recommendations.</p>
             </div>
           ) : (
             <div style={{ marginTop: 18, borderRadius: 8, border: "1px dashed rgba(255,255,255,0.04)", background: "#0f0f0f", padding: 16 }}>
