@@ -375,7 +375,7 @@ async function buildAiRecommendations(params: {
           {
             role: "system",
             content:
-              "You are a recommendation engine for a movie and TV platform. Return ONLY valid JSON. No explanations, no markdown, no text before or after the JSON object. The JSON must be the entire response.",
+              "You are a recommendation engine. Respond with ONLY a JSON object in this exact format: {\"recommendations\": [{\"contentId\": \"<id>\", \"explanation\": \"<2-sentence reason>\"}]}. No text before or after the JSON. No markdown fences.",
           },
           {
             role: "user",
@@ -429,23 +429,27 @@ async function buildAiRecommendations(params: {
       jsonCandidate = jsonMatch[0];
     }
 
-    const parsed = JSON.parse(jsonCandidate) as {
-      recommendations?: Array<{ contentId: string; explanation: string }>;
-    };
+    const parsed = JSON.parse(jsonCandidate);
 
-    if (!parsed?.recommendations?.length) {
+    // Support both {"recommendations": [...]} and raw [...]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recs: any[] = Array.isArray(parsed)
+      ? parsed
+      : parsed?.recommendations ?? null;
+
+    if (!recs?.length) {
       return null;
     }
 
-    return parsed.recommendations
+    return recs
       .slice(0, 5)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((recommendation: any, index: number) => ({
-        contentId: recommendation.contentId,
+        contentId: recommendation.contentId ?? recommendation.id ?? recommendation.itemId,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        title: contentPool.find((item: any) => item.id === recommendation.contentId)?.title ?? `Pick ${index + 1}`,
+        title: contentPool.find((item: any) => item.id === (recommendation.contentId ?? recommendation.id ?? recommendation.itemId))?.title ?? `Pick ${index + 1}`,
         score: 100 - index,
-        explanation: recommendation.explanation,
+        explanation: recommendation.explanation ?? recommendation.reason ?? "",
       }));
   } catch (error) {
     console.error("AI recommendation parsing error:", error);
