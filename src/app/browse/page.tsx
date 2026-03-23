@@ -5,6 +5,7 @@ import { GENRES } from "@/lib/constants";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatGenres } from "@/lib/utils";
+import { logoutAction } from "@/server/actions";
 
 export default async function BrowsePage({
   searchParams,
@@ -42,6 +43,42 @@ export default async function BrowsePage({
   return (
     <div style={{ background: "#0a0a0a", minHeight: "100vh", padding: "0 24px 60px" }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        {/* Navigation header */}
+        <header style={{ padding: "40px 0 8px" }}>
+          <p style={{ color: "#e50914", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.18em", fontWeight: 700, marginBottom: 8 }}>
+            Welcome back
+          </p>
+          <h1 style={{ fontFamily: "Georgia, serif", color: "#ffffff", fontSize: "2rem", margin: "0 0 4px", fontWeight: 700 }}>
+            {session.user.name}
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.85rem", margin: "4px 0 0" }}>
+            {session.user.email} &bull; {session.user.role === "ADMIN" ? "Administrator" : "Member"}
+          </p>
+          <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 20 }}>
+            <Link href="/dashboard" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 999, padding: "8px 20px", color: "#fff", textDecoration: "none", fontSize: "0.875rem" }}>
+              Dashboard
+            </Link>
+            <Link href="/browse" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 999, padding: "8px 20px", color: "#fff", textDecoration: "none", fontSize: "0.875rem" }}>
+              Browse
+            </Link>
+            <Link href="/onboarding" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 999, padding: "8px 20px", color: "#fff", textDecoration: "none", fontSize: "0.875rem" }}>
+              Taste Profile
+            </Link>
+            {session.user.role === "ADMIN" && (
+              <Link href="/admin" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 999, padding: "8px 20px", color: "#fff", textDecoration: "none", fontSize: "0.875rem" }}>
+                Admin
+              </Link>
+            )}
+            <form action={logoutAction} style={{ display: "inline" }}>
+              <button type="submit" style={{ background: "#e50914", color: "#fff", borderRadius: 999, padding: "8px 20px", border: "none", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600 }}>
+                Log out
+              </button>
+            </form>
+          </nav>
+        </header>
+
+        <div style={{ height: 1, background: "rgba(255,255,255,0.07)", margin: "28px 0" }} />
+
         {/* Card wrapper */}
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "2rem", marginTop: 32 }}>
           {/* Header */}

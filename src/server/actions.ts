@@ -101,7 +101,7 @@ export async function loginAction(formData: FormData) {
 
 export async function logoutAction() {
   await clearSession();
-  redirect("/login?success=You have been logged out.");
+  redirect("/");
 }
 
 export async function saveOnboardingAction(formData: FormData) {

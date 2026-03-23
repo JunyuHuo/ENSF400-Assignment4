@@ -6,7 +6,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { GENRES } from "@/lib/constants";
 import { requireUser } from "@/lib/auth";
 import { generateRecommendationBatch, getInteractionInsights, getLatestRecommendations } from "@/lib/recommendation";
-import { generateRecommendationsAction } from "@/server/actions";
+import { generateRecommendationsAction, logoutAction } from "@/server/actions";
 import { formatGenres } from "@/lib/utils";
 
 export default async function DashboardPage({
@@ -65,7 +65,7 @@ export default async function DashboardPage({
                 Admin
               </Link>
             )}
-            <form action={`/api/auth/signout`} method="POST" style={{ display: "inline" }}>
+            <form action={logoutAction} style={{ display: "inline" }}>
               <button type="submit" style={{ background: "#e50914", color: "#fff", borderRadius: 999, padding: "8px 20px", border: "none", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600 }}>
                 Log out
               </button>
