@@ -375,7 +375,7 @@ async function buildAiRecommendations(params: {
           {
             role: "system",
             content:
-              "You are a recommendation engine for a movie and TV platform. Return valid JSON only.",
+              "You are a recommendation engine for a movie and TV platform. Return ONLY valid JSON. No explanations, no markdown, no text before or after the JSON object. The JSON must be the entire response.",
           },
           {
             role: "user",
@@ -415,16 +415,25 @@ async function buildAiRecommendations(params: {
 
   try {
     // Robust JSON extraction
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    // If the response doesn't start with '{', find the first '{' and try from there
+    let jsonCandidate = raw.trim();
+    if (!jsonCandidate.startsWith("{")) {
+      const firstBrace = jsonCandidate.indexOf("{");
+      if (firstBrace !== -1) {
+        jsonCandidate = jsonCandidate.slice(firstBrace);
+      }
+    }
+    // Non-greedy match to avoid consuming trailing non-JSON text
+    const jsonMatch = jsonCandidate.match(/\{[\s\S]*?\}/);
     if (jsonMatch) {
-      raw = jsonMatch[0];
+      jsonCandidate = jsonMatch[0];
     }
 
-    const parsed = JSON.parse(raw) as {
+    const parsed = JSON.parse(jsonCandidate) as {
       recommendations?: Array<{ contentId: string; explanation: string }>;
     };
 
-    if (!parsed.recommendations?.length) {
+    if (!parsed?.recommendations?.length) {
       return null;
     }
 
